@@ -1,0 +1,30 @@
+client file contains all the frontend stuff
+
+----
+an interface is like an overview of the contract
+it is like a sketch of how the contract should look like and should contain.
+but, it doesn't contain any implementations.
+Hence, whenn coding our Kittycontract.sol, we need those functions/events
+
+We can inherit the contract.
+Hence, we won't need to code for things like the requried events
+but for functions, we might need to code it manually. We can just copy paste the code over
+as in just copy the function into our Kittycontract.sol
+e.g. 
+    function balanceOf(address owner) external view returns (uint256 balance);
+and then we code fully
+e.g. 
+    function balanceOf(address owner) external view returns (uint256 balance){
+        return balance[owner];
+    }
+then, we also need to create the variables required. we need to do this for all the other functions.
+hence just copy paste all the functions (without the events) into the Kittycontract.sol,
+then code from there. 
+
+Note: if we don't implement all the functions, we won't be able to deploy the contract.
+This is because it doesn't follow the correct standards of an NFT. 
+---
+note: if we are using ganache, we can just do truffle migrate on the console (need to have ganache open also though)
+---
+
+
