@@ -1,3 +1,4 @@
+// https://eips.ethereum.org/EIPS/eip-721 must have all these events/functions
 pragma solidity ^0.5.12;
 import "./IERC721.sol";
 
@@ -27,9 +28,14 @@ contract Kittycontract is IERC721 {
 
     mapping(uint256 => address) public kittyIndexToOwner;
     mapping(address => uint256) ownershipTokenCount;
+    mapping(uint256 => address) public kittyIndexToApproved;
+
+    // owner address => operator address => true/false ; _operatorApprovals[myAddr][oppAddr] = true/false
+    mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     constructor() public {
         contractOwner = msg.sender;
+        
     }
 
     function createKittyGen0(uint256 _genes)
@@ -65,6 +71,7 @@ contract Kittycontract is IERC721 {
 
         emit Birth(_owner, newKittenId, _mumId, _dadId, _genes);
         _transfer(address(0), _owner, newKittenId);
+        
         return newKittenId;
     }
 
@@ -90,56 +97,31 @@ contract Kittycontract is IERC721 {
         genes = uint256(kitty.genes);
     }
 
-    /**
-     * @dev Returns the number of tokens in ``owner``'s account.
-     */
+
     function balanceOf(address owner) external view returns (uint256 balance) {
         return ownershipTokenCount[owner];
     }
 
-    /*
-     * @dev Returns the total number of tokens in circulation.
-     */
+
     function totalSupply() external view returns (uint256 total) {
         return kitties.length;
     }
 
-    /*
-     * @dev Returns the name of the token.
-     */
+
     function name() external view returns (string memory tokenName) {
         return nameOfToken;
     }
 
-    /*
-     * @dev Returns the symbol of the token.
-     */
     function symbol() external view returns (string memory tokenSymbol) {
         return symbolOfToken;
     }
 
-    /**
-     * @dev Returns the owner of the `tokenId` token.
-     *
-     * Requirements:
-     *
-     * - `tokenId` must exist.
-     */
+
     function ownerOf(uint256 tokenId) external view returns (address owner) {
         return kittyIndexToOwner[tokenId];
     }
 
-    /* @dev Transfers `tokenId` token from `msg.sender` to `to`.
-     *
-     *
-     * Requirements:
-     *
-     * - `to` cannot be the zero address.
-     * - `to` can not be the contract address.
-     * - `tokenId` token must be owned by `msg.sender`.
-     *
-     * Emits a {Transfer} event.
-     */
+
     function transfer(address to, uint256 tokenId) external {
         require(to != address(0));
         require(to != address(this));
@@ -161,9 +143,78 @@ contract Kittycontract is IERC721 {
         // we only decrease if it is a normal transfer.
         if (_from != address(0)) {
             ownershipTokenCount[_from]--;
+            // after transfer, the approved address (from the prev owner) should be deleted
+            delete kittyIndexToApproved[_tokenId];
         }
         emit Transfer(_from, _to, _tokenId);
     }
+
+    function approve(address _approved, uint256 _tokenId) external{
+        require(_isTokenOwner(msg.sender, _tokenId););
+        _approve(_approved, _tokenId);
+        emit Approval(msg.sender, _approved, _tokenId);
+    }
+
+    function _approve(address _approved, uint256 _tokenId) internal {
+        kittyIndexToApproved[_tokenId] = _approved;
+
+    }
+
+
+    function setApprovalForAll(address _operator, bool _approved) external{
+        require(_operator != msg.sender);
+        _operatorApprovals[msg.sender][_operator] = _approved;
+        emit ApprovalForAll(msg.sender, _operator, _approved)
+    }
+
+    // gets the status of a token of whether or not it is approved
+    function getApproved(uint256 _tokenId) external view returns (address){
+        require(_tokenId < kitties.length); // Token must exist
+        // returns the approved address; returns address(0) if not approved
+        return kittyIndexToApproved[_tokenId]; 
+    }
+
+    function isApprovedForAll(address _owner, address _operator)
+        external
+        view
+        returns (bool){
+            return _operatorApprovals[_owner][_operator];
+        }
+
+    // transfer and transferFrom has the same logic as ERC20 whereby transferFrom is
+    // allowing the smart contract to transfer the NFT on the owner's behalf
+    // once the owner approves it.
+    function safeTransferFrom(
+        address _from,
+        address _to,
+        uint256 _tokenId,
+        bytes calldata data
+    ) external;
+
+
+    function safeTransferFrom(
+        address _from,
+        address _to,
+        uint256 _tokenId
+    ) external;
+
+
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _tokenId
+    ) external{
+        require(_to != address(0));
+        // either one of the three has to be true
+        require(msg.sender == _from || _approvedFor(msg.sender, _tokenId) || isApprovedForAll(_from, msg.sender));
+        require(_isTokenOwner(_from, _tokenId));
+        require(_tokenId < kitties.length);
+
+        _transfer(_from, _to, _tokenId);
+    
+    
+    }
+
 
     function _isTokenOwner(address _caller, uint256 _tokenId)
         internal
